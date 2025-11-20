@@ -1,0 +1,475 @@
+/*
+ * Author       : zappyworkssoftwaresolutionsi
+ * Generated on : 20-Nov-2025 10:43:23
+ * Version      : 1.0
+ */
+ application "Asset Management"
+ {
+ 	date format = "dd-MMM-yyyy"
+ 	time zone = "Asia/Kolkata"
+ 	time format = "24-hr"
+ 	forms
+	{
+		form Asset
+		{
+			success message = "Asset Added Successfully"
+			Section
+			(
+				type = section
+	 			row = 1
+	 			column = 0   
+				width = medium
+			)
+			Asset_Name
+			(
+    			type = text
+				displayname = "Asset Name"
+	 			row = 1
+	 			column = 1   
+				width = medium
+			)
+			Image
+			(
+    			type = image
+				source  = file
+				aspect ratio = original
+				camera = primary
+				show gallery = true
+				switch camera = true
+	 			row = 1
+	 			column = 1   
+				width = medium
+			)
+	
+			actions
+			{
+				on add
+				{
+					submit
+					(
+   						type = submit
+   						displayname = "Submit"
+					)
+				}
+				on edit
+				{
+					update
+					(
+   						type = submit
+   						displayname = "Update"
+					)
+					cancel
+					(
+   						type = cancel
+   						displayname = "Cancel"
+					)
+				}
+			}
+		}
+	}
+	reports
+	{
+		default list All_Assets
+		{
+			displayName = "All Assets"
+			show all rows from Asset    
+			(
+				Asset_Name as "Asset Name"
+				Image
+			)
+		}
+	}
+
+
+		workflow
+		{
+		form
+		{
+			zoho_workdrive as "zoho workdrive"
+			{
+				type =  form
+				form = Asset
+				record event = on add or edit
+
+				on success
+				{
+					actions 
+					{
+						custom deluge script
+						(
+											// var = zoho.workdrive.createFolder(input.Asset_Name,"tsqcmfe40062142be446081814b5518f70600","zoho_workdrive_connection");
+										// wdid = var.get("data").get("id");
+										// fileipload = input.Image.getsuffix("downqual").getsuffix("image/").getprefix("\" border = \"0\"></img>");
+										// uf = zoho.workdrive.uploadFile(input.Image,wdid,fileipload,false,"zoho_workdrive_connection");
+										currentYear = zoho.currentdate.toString("yyyy");
+										yearFolder = zoho.workdrive.createFolder(currentYear,"tsqcmfe40062142be446081814b5518f70600","zoho_workdrive_connection");
+										yearFolderID = yearFolder.get("data").get("id");
+										// STEP 3: Detect File Name (Deluge-friendly)
+										fileName = "";
+										try 
+										{
+											// Common structure for file upload fields
+											if(input.Image != null && input.Image.get("name") != null)
+											{
+												fileName = input.Image.get("name");
+											}
+											else if(input.Image != null && input.Image.get("file_name") != null)
+											{
+												fileName = input.Image.get("file_name");
+											}
+											else
+											{
+												fileName = "upload_" + zoho.currenttime.toString("yyyyMMddHHmmss") + ".jpg";
+											}
+										}
+										catch (e)
+										{
+											fileName = "upload_" + zoho.currenttime.toString("yyyyMMddHHmmss") + ".jpg";
+										}
+										uploadFile = zoho.workdrive.uploadFile(input.Image,yearFolderID,fileName,false,"zoho_workdrive_connection");
+										info uploadFile;
+						)
+					}
+				}
+
+			}
+		}
+
+
+
+		approval
+		{
+			Approval as "Approval"
+			{
+				type =  approval
+				form = Asset
+				display fields = [Asset_Name]
+				on start
+				{
+				}
+				on level 1
+				{
+					on approve 
+					{
+						actions 
+						{
+							sendmail
+							(
+								from : zoho.loginuserid
+								to : approver.submitter
+								subject : "Approval Request"
+								message : "Your request has been approved."
+							)
+						}
+						actions 
+						{
+						on load
+						(
+							var = zoho.workdrive.createFolder(input.Asset_Name,"tsqcmfe40062142be446081814b5518f70600","zoho_workdrive_connection");
+												wdid = var.get("data").get("id");
+												uf = zoho.workdrive.uploadFile(input.Image,wdid,input.Asset_Name,false,"zoho_workdrive_connection");
+						)
+						}
+					}
+					on reject
+					{
+
+						actions 
+						{
+							sendmail
+							(
+								from : zoho.loginuserid
+								to : approver.submitter
+								subject : "Approval Request"
+								message : "Your request has been rejected."
+							)
+						}
+					}
+				}
+			}
+		}
+
+
+
+	}
+	share_settings
+	{
+			"Read"
+			{
+				name = "Read"
+				type = Users_Permissions
+				permissions = {Chat:true, Predefined:true, ApiAccess:true, PIIAccess:true, ePHIAccess:true}
+				description = "This profile will have read permission for all components\n"
+			}
+			"Write"
+			{
+				name = "Write"
+				type = Users_Permissions
+				permissions = {Chat:true, Predefined:true, ApiAccess:true, PIIAccess:true, ePHIAccess:true}
+				description = "This profile will have write permission for all components\n"
+			}
+			"Developer"
+			{
+				name = "Developer"
+				type = Developer
+				permissions = {Chat:false, Predefined:true, ApiAccess:true, PIIAccess:true, ePHIAccess:true}
+				description = "Developer Profile\n"
+			}
+			"Administrator"
+			{
+				name = "Administrator"
+				type = Users_Permissions
+				permissions = {Chat:true, Predefined:true, ApiAccess:true, PIIAccess:true, ePHIAccess:true}
+				description = "This profile will have all the permissions.\n"
+			}
+			"Customer"
+			{
+				name = "Customer"
+				type = Customer_Portal
+				permissions = {Chat:true, Predefined:true, ApiAccess:true, PIIAccess:true, ePHIAccess:true}
+				description = "This is the default profile having only add and view permission.\n"
+			}
+			roles
+			{
+				"CEO"
+				{
+					description = "User belonging to this role can access data of all other users."
+				}
+			}
+	}
+
+
+	connections
+	{
+		zoho_workdrive_connection
+		(
+			displayname = "Zoho WorkDrive Connection"
+			connector = zoho_workdrive
+			permissions = {"add_comment","add_members_to_team_folder","all_file_operations","all_organization_operations","create_data_template","create_external_collection","create_group","create_label","create_share_link","create_split_page","create_team_folder","delete_collection","delete_comment","delete_data_template","delete_group","delete_label","delete_member_from_team_folder","delete_team_folder","disable_collection","download_file","enable_collection","get_all_collections","get_all_comments","get_all_team_members","get_file_details","get_group","get_label","get_my_user_details","get_shared_file","get_share_link","get_team_folder","remove_file_access","rename_data_template","rename_file","rename_team_folder","search_file","share_file","update_comment","update_group_name","update_label_name","update_share_link","update_team_name","upload_file"}
+		)
+	}
+	web
+	{
+		forms
+		{
+			form Asset
+			{
+				label placement = left
+			}
+		}
+		reports
+		{
+			report All_Assets
+			{
+				quickview
+				(
+					layout
+					(
+		 				type = -1
+						datablock1
+						(
+							layout type = -1
+							fields
+							(
+								Asset_Name as "Asset Name"
+								Image
+							)
+						)
+					)
+					menu
+    				(
+    	 				header
+    	 				(
+    		 				Edit 
+    		 				Duplicate 
+    		 				Delete 
+    	 				)
+						record
+						(
+							Edit   	   
+							Duplicate   	   
+							Delete   	   
+    					)
+    				)
+    				action
+    				(
+						on click
+						(
+							View Record   	   
+    					)
+						on right click
+						(
+							Edit   	   
+							Delete   	   
+							Duplicate   	   
+							View Record   	   
+    					)
+     				)
+				)
+
+				detailview
+				(
+					layout
+					(
+		 				type = 1
+						datablock1
+						(
+							layout type = -2
+							fields
+							(
+								Asset_Name as "Asset Name"
+								Image
+							)
+						)
+					)
+					menu
+    				(
+    	 				header
+    	 				(
+    		 				Edit 
+    		 				Duplicate 
+    		 				Delete 
+    	 				)
+    				)
+				)
+			}
+		}
+		menu
+		{
+			space Space
+			{
+				displayname = "Space"
+				icon = "objects-spaceship"
+
+				section Assets
+				{
+					displayname = "Assets"
+					icon = "business-stock"
+					form  Asset
+					{
+						icon = "business-money-coins"
+					}
+					report All_Assets
+					{
+						icon = "tech-desktop"
+					}
+				}
+				section App_Preferences
+				{
+					displayname = "App Preferences"
+					icon = "design-app"
+					systemcomponent
+					{
+						type = localization
+						displayname = "Language Selection"
+						icon = "education-language"
+					}
+					systemcomponent
+					{
+						type = connection
+						displayname = "Integrations"
+						icon = "tech-2-connection"
+					}
+				}
+				section Approvals
+				{
+					displayname = "Approvals"
+					icon = "ui-2-hourglass"
+					systemcomponent
+					{
+						type = approval
+						approval status = pending
+						displayname = "Pending Tasks"
+						icon = "ui-2-hourglass"
+					}
+					systemcomponent
+					{
+						type = approval
+						approval status = completed
+						displayname = "Completed Tasks"
+						icon = "design-todo"
+					}
+				}
+				section SharedAnalytics_Section
+				{
+					type = shared_user_report_section
+					displayname = "Reports"
+					icon = "business-chart-bar-33"
+				}
+			}
+			preference
+			{
+				icon
+				{
+					style = outline
+				}
+			}
+		}
+		customize
+		{
+			new theme = 11
+			font = "lato"
+			color options
+			{
+				color = "1"
+			}
+			logo
+			{
+				preference = "none"
+				placement = "left"
+			}
+		}
+	}
+	phone
+	{
+		forms
+		{
+			form Asset
+			{
+				label placement = auto
+			}
+		}
+		customize
+		{
+			layout = slidingpane
+			font = "default"
+			style = "3"
+			color options
+			{
+				color = rose
+			}
+			logo
+			{
+				preference = "none"
+			}
+		}
+	}
+	tablet
+	{
+		forms
+		{
+			form Asset
+			{
+				label placement = auto
+			}
+		}
+		customize
+		{
+			layout = slidingpane
+			font = "default"
+			style = "3"
+			color options
+			{
+				color = rose
+			}
+			logo
+			{
+				preference = "none"
+			}
+		}
+	}
+	translation
+{
+{"Language_Settings":{"LANGAGUE_WITH_LOGIN":"browser"}}
+}
+}
